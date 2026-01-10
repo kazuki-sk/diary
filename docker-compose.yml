@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: heisei_retro_backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/target # Prevent host target override
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://postgres:password@db:5432/heisei_retro_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - retro_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: heisei_retro_db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=heisei_retro_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - retro_net
+
+volumes:
+  postgres_data:
+
+networks:
+  retro_net:
+    driver: bridge
